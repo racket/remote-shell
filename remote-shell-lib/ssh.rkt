@@ -26,7 +26,7 @@
           [scp ((remote? path-string? path-string?)
                 (#:mode (or/c 'error 'result))
                 . ->* .
-                void?)]
+                any)]
           [make-sure-remote-is-ready ((remote?)
                                       (#:tries exact-nonnegative-integer?)
                                       . ->* .
