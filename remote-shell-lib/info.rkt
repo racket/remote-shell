@@ -8,3 +8,5 @@
 (define pkg-desc "implementation (no documentation) part of \"remote-shell\"")
 
 (define pkg-authors '(mflatt))
+
+(define version "1.1")

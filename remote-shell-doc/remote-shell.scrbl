@@ -194,3 +194,13 @@ Deletes @racket[snapshot-name] for the virtual machine @racket[name].}
 
 Reports whether @racket[snapshot-name] exists for the virtual machine
 @racket[name].}
+
+
+@defproc[(get-vbox-snapshot-uuid [name string?]
+                                 [snapshot-name string?])
+         (or/c #f string?)]{
+
+Returns the UUID of @racket[snapshot-name] for the virtual machine
+@racket[name].
+
+@history[#:added "1.1"]}

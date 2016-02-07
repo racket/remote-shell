@@ -23,7 +23,8 @@
   [take-vbox-snapshot (string? string? . -> . void?)]
   [restore-vbox-snapshot (string? string? . -> . void?)]
   [delete-vbox-snapshot (string? string? . -> . void?)]
-  [exists-vbox-snapshot? (string? string? . -> . boolean?)]))
+  [exists-vbox-snapshot? (string? string? . -> . boolean?)]
+  [get-vbox-snapshot-uuid (string? string? . -> . (or/c #f string?))]))
 
 (define VBoxManage (find-executable-path "VBoxManage"))
 (define use-headless? #t)
@@ -136,3 +137,11 @@
     (error 'exists-vbox-snapshot? "failed"))
   (regexp-match? (regexp (format "SnapshotName[-0-9]*=\"~a" (regexp-quote name)))
                  s))
+(define (get-vbox-snapshot-uuid vbox name)
+  (define s (system*/string VBoxManage "snapshot" vbox "list" "--machinereadable"))
+  (unless s
+    (error 'exists-vbox-snapshot? "failed"))
+  (define rx (regexp (format "SnapshotName[-0-9]*=\"~a\"\nSnapshotUUID[-0-9]*=\"([^\"]*)\""
+                             (regexp-quote name))))
+  (define m (regexp-match rx s))
+  (and m (cadr m)))
