@@ -100,11 +100,13 @@
   (define orig-thread (current-thread))
   (define timeout (remote-timeout remote))
   (define key (remote-key remote))
+  (define ssh-custodian (make-custodian))
   (define timeout-thread
-    (thread (lambda ()
-              (sleep timeout)
-              (set! timeout? #t)
-              (break-thread orig-thread))))
+    (parameterize ([current-custodian ssh-custodian])
+      (thread (lambda ()
+                (sleep timeout)
+                (set! timeout? #t)
+                (break-thread orig-thread)))))
 
   (define (show-time)
     (when show-time?
@@ -113,7 +115,10 @@
 
   (define ok?
     (parameterize ([current-output-port stdout]
-                   [current-error-port stderr])
+                   [current-error-port stderr]
+                   [current-custodian ssh-custodian]
+                   [current-subprocess-custodian-mode 'kill]
+                   [subprocess-group-enabled #t])
       (with-handlers ([exn? (lambda (exn)
                               (cond
                                [timeout?
@@ -143,6 +148,7 @@
                            "'")))))
          (kill-thread timeout-thread)
          (show-time)))))
+  (custodian-shutdown-all ssh-custodian)
   (sync-out)
   (sync-err)
   (let ([dest (if ok? success-dest failure-dest)])

@@ -53,7 +53,7 @@ command will be considered failed.}
 
 
 @defproc[(ssh [remote remote?]
-              [command (or/c string? path-string?)]
+              [command any/c] ...
               [#:mode mode (or/c 'error 'result 'output) 'error]
               [#:failure-log failure-dest (or/c #f path-string?) #f]
               [#:success-log success-dest (or/c #f path-string?) #f]
@@ -61,7 +61,8 @@ command will be considered failed.}
            (or/c void? boolean? (cons/c boolean? bytes?))]{
 
 Runs a shell command at @racket[remote], were the @racket[command]s
-are concatenated (with no additional spaces) to specify the remote
+are converted to a string via @racket[display]
+and concatenated (with no additional spaces) to specify the remote
 shell command. The remote command is implemented with @exec{ssh} as
 found by @racket[find-system-path].
 
