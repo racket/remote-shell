@@ -31,7 +31,9 @@
                                       (#:tries exact-nonnegative-integer?)
                                       . ->* .
                                       void?)]
-          [at-remote (remote? path-string? . -> . string?)]))
+          [at-remote (remote? path-string? . -> . string?)]
+
+          [remote-host ((remote?) . ->* . string?)]))
 
 (struct remote (host user timeout remote-tunnels env key)
   #:constructor-name make-remote)
