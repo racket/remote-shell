@@ -33,7 +33,7 @@
                                       void?)]
           [at-remote (remote? path-string? . -> . string?)]
 
-          [remote-host ((remote?) . ->* . string?)]))
+          [remote-host (remote? . -> . string?)]))
 
 (struct remote (host user timeout remote-tunnels env key)
   #:constructor-name make-remote)
