@@ -113,6 +113,10 @@ Combines @racket[remote] and @racket[path] to form an argument for
 Runs a simple command at @racket[remote] to check that it receives
 connections, trying up to @racket[tries] times.}
 
+@defproc[(remote-host [remote remote?]) string?]{
+  Gets the hostname that the remote is set to use in string form.
+
+@history[#:added "6.12"]}
 
 @; ----------------------------------------
 
