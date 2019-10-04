@@ -1,7 +1,9 @@
 #lang racket/base
-(require racket/system
+
+(require racket/contract
+         racket/list
          racket/string
-         racket/contract)
+         racket/system)
 
 (provide
  (contract-out
@@ -24,7 +26,12 @@
   [restore-vbox-snapshot (string? string? . -> . void?)]
   [delete-vbox-snapshot (string? string? . -> . void?)]
   [exists-vbox-snapshot? (string? string? . -> . boolean?)]
-  [get-vbox-snapshot-uuid (string? string? . -> . (or/c #f string?))]))
+  [get-vbox-snapshot-uuid (string? string? . -> . (or/c #f string?))]
+  [import-vbox-vm (->* (path-string?)
+                       (#:name (or/c false/c non-empty-string?)
+                        #:cpus (or/c false/c exact-positive-integer?)
+                        #:memory (or/c false/c exact-positive-integer?))
+                       void?)]))
 
 (define VBoxManage (find-executable-path "VBoxManage"))
 (define use-headless? #t)
@@ -44,7 +51,7 @@
     [(|powered off| aborted) 'off]
     [(running saved paused) state]
     [(restoring) (vbox-state vbox)]
-    [else 
+    [else
      (eprintf "~a\n" s)
      (error 'vbox-state "could not get virtual machine status: ~s" vbox)]))
 
@@ -52,7 +59,7 @@
   (system* VBoxManage "controlvm" vbox what))
 
 (define (vbox-start vbox)
-  (apply system* VBoxManage "startvm" vbox 
+  (apply system* VBoxManage "startvm" vbox
          (if use-headless?
              '("--type" "headless")
              null))
@@ -71,7 +78,7 @@
       (define ready (make-semaphore))
       (define done (make-semaphore))
       (parameterize ([current-custodian lock-cust])
-        (thread (lambda () 
+        (thread (lambda ()
                   (semaphore-wait s)
                   (semaphore-post ready)
                   (sync t done)
@@ -137,6 +144,7 @@
     (error 'exists-vbox-snapshot? "failed"))
   (regexp-match? (regexp (format "SnapshotName[-0-9]*=\"~a" (regexp-quote name)))
                  s))
+
 (define (get-vbox-snapshot-uuid vbox name)
   (define s (system*/string VBoxManage "snapshot" vbox "list" "--machinereadable"))
   (unless s
@@ -145,3 +153,23 @@
                              (regexp-quote name))))
   (define m (regexp-match rx s))
   (and m (cadr m)))
+
+(define (import-vbox-vm path
+                        #:name [name #f]
+                        #:cpus [cpus #f]
+                        #:memory [memory #f])
+  (define path:str
+    (if (path? path)
+        (path->string path)
+        path))
+
+  (define-syntax-rule (present opt arg ...)
+    (if opt (list arg ...) null))
+
+  (define args
+    (flatten (list (present name "--vsys" "0" "--vmname" name)
+                   (present cpus "--vsys" "0" "--cpus" (number->string cpus))
+                   (present memory "--vsys" "0" "--memory" (number->string memory)))))
+
+  (unless (apply system* VBoxManage "import" path:str args)
+    (error 'import-vbox-vm "failed")))
