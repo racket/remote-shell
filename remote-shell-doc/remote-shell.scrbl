@@ -1,6 +1,7 @@
 #lang scribble/manual
 @(require (for-label racket/base
                      racket/contract
+                     racket/string
                      remote-shell/ssh
                      remote-shell/vbox))
 
@@ -376,3 +377,22 @@ Returns the UUID of @racket[snapshot-name] for the virtual machine
 @racket[name].
 
 @history[#:added "1.1"]}
+
+@defproc[(import-vbox-vm [path path-string?]
+                         [#:name name (or/c false/c non-empty-string?) #f]
+                         [#:cpus cpus (or/c false/c exact-positive-integer?) #f]
+                         [#:memory memory (or/c false/c exact-positive-integer?) #f]) void?]{
+
+Imports a VirtualBox VM from the OVF file at @racket[path].
+
+When provided, @racket[name] specifies what the VM's alias (as seen in
+the GUI and in the output of commands like @exec{VBoxManage list vms})
+ought to be.
+
+The @racket[cpus] argument can be used to override the number of
+processors the VM has access to.
+
+The @racket[memory] argument can be used to override the amount of RAM
+(in MB) the VM has access to.
+
+@history[#:added "1.4"]}
