@@ -3,18 +3,22 @@
          racket/format
          racket/port
          racket/date
-         racket/contract)
+         racket/contract
+         "docker.rkt")
 
 (provide remote?
+         current-ssh-verbose
          (contract-out 
           (rename create-remote remote
                   ((#:host string?)
-                   (#:user string?
-                           #:key (or/c #f path-string?)
-                           #:env (listof (cons/c string? string?))
-                           #:timeout real?
-                           #:remote-tunnels (listof (cons/c (integer-in 1 65535)
-                                                            (integer-in 1 65535))))
+                   (#:kind (or/c 'ip 'docker)
+                    #:shell (listof string?)
+                    #:user string?
+                    #:key (or/c #f path-string?)
+                    #:env (listof (cons/c string? string?))
+                    #:timeout real?
+                    #:remote-tunnels (listof (cons/c (integer-in 1 65535)
+                                                     (integer-in 1 65535))))
                    . ->* . remote?))
           [ssh ((remote?)
                 (#:mode (or/c 'error 'result 'output)
@@ -35,18 +39,23 @@
 
           [remote-host (remote? . -> . string?)]))
 
-(struct remote (host user timeout remote-tunnels env key)
+(struct remote (host kind user shell timeout remote-tunnels env key)
   #:constructor-name make-remote)
 
 (define create-remote
   (let ()
     (define (remote #:host host
+                    #:kind [kind 'ip]
                     #:user [user ""]
+                    #:shell [shell '("/bin/sh" "-c" )]
                     #:key [key #f]
                     #:timeout [timeout 600]
                     #:remote-tunnels [remote-tunnels null]
                     #:env [env null])
-      (make-remote host user timeout remote-tunnels env key))
+      (when (and (eq? kind 'docker)
+                 (pair? remote-tunnels))
+        (raise-arguments-error 'remote "tunnels are not supported for a 'docker remote"))
+      (make-remote host kind user shell timeout remote-tunnels env key))
     remote))
 
 (define scp-exe (find-executable-path "scp"))
@@ -60,11 +69,14 @@
 (define (at-remote remote path)
   (~a (remote-user+host remote) ":" path))
 
+(define current-ssh-verbose (make-parameter #f (lambda (v) (and v #t))))
+
 (define (system*/show exe . args)
-  (displayln (apply ~a #:separator " " 
-                    (map (lambda (p) (if (path? p) (path->string p) p)) 
-                         (cons exe args))))
-  (flush-output)
+  (when (current-ssh-verbose)
+    (displayln (apply ~a #:separator " " 
+                      (map (lambda (p) (if (path? p) (path->string p) p)) 
+                           (cons exe args))))
+    (flush-output))
   (apply system* exe args))
 
 (define (ssh remote
@@ -78,8 +90,8 @@
      (list "/usr/bin/env")
      (for/list ([e (in-list (remote-env remote))])
        (~a (car e) "=" (cdr e)))
-     (list
-      "/bin/sh" "-c" (apply ~a args))))
+     (remote-shell remote)
+     (list (apply ~a args))))
 
   (define saved (and (or failure-dest success-dest)
                      (open-output-bytes)))
@@ -130,9 +142,16 @@
                                [else (raise exn)]))])
         (show-time)
         (begin0
-         (if (and (equal? (remote-host remote) "localhost")
+          (cond
+            [(eq? (remote-kind remote) 'docker)
+             (displayln cmd)
+             (flush-output)
+             (apply docker-exec #:name (remote-host remote) cmd
+                    #:mode 'result)]
+            [(and (equal? (remote-host remote) "localhost")
                   (equal? (remote-user remote) ""))
-             (apply system*/show cmd)
+             (apply system*/show cmd)]
+            [else
              (apply system*/show ssh-exe
                     (append
                      ;; create tunnels to connect back to server:
@@ -147,9 +166,9 @@
                      (for/list ([arg (in-list cmd)])
                        (~a "'" 
                            (regexp-replace* #rx"'" arg "'\"'\"'")
-                           "'")))))
-         (kill-thread timeout-thread)
-         (show-time)))))
+                           "'"))))])
+          (kill-thread timeout-thread)
+          (show-time)))))
   (custodian-shutdown-all ssh-custodian)
   (sync-out)
   (sync-err)
@@ -168,7 +187,15 @@
 
 (define (scp remote src dest #:mode [mode 'error])
   (define key (remote-key remote))
-  (define ok? (apply system*/show scp-exe (append (if key (list "-i" key) null) (list src dest))))
+  (define ok?
+    (case (remote-kind remote)
+      [(docker)
+       (docker-copy #:name (remote-host remote)
+                    #:src src
+                    #:dest dest
+                    #:mode 'result)]
+      [(ip)
+       (apply system*/show scp-exe (append (if key (list "-i" key) null) (list src dest)))]))
   (case mode
     [(result) ok?]
     [else 
