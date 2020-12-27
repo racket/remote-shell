@@ -35,6 +35,8 @@
      #:image-name string?)
     (#:network (or/c #f string?)
      #:volumes (listof (list/c path-string? string? (or/c 'ro 'rw)))
+     #:memory-mb (or/c #f exact-nonnegative-integer?)
+     #:swap-mb (or/c #f exact-nonnegative-integer?)
      #:replace? boolean?)
     . ->* .
     string?)]
@@ -145,6 +147,8 @@
                            #:image-name image-name
                            #:network [network #f]
                            #:volumes [volumes '()]
+                           #:memory-mb [memory-mb #f]
+                           #:swap-mb [swap-mb #f]
                            #:replace? [replace? #f])
   (when replace?
     (define id (docker-id #:name name))
@@ -161,6 +165,10 @@
                 null)
             (for/list ([vol (in-list volumes)])
               (~a "--volume=" (car vol) ":" (cadr vol) ":" (caddr vol)))
+            (if (or memory-mb swap-mb)
+                (list (format "--memory=~am" (or memory-mb swap-mb))
+                      (format "--memory-swap=~am" (+ (or memory-mb swap-mb) (or swap-mb memory-mb))))
+                null)
             (list image-name))))
   (unless reply (failed who "create failed" name))
   (extract-one-id who reply))

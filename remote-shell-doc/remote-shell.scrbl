@@ -200,6 +200,8 @@ other names).}
                         [#:image-name image-name string?]
                         [#:network network (or/c #f string?) #f]
                         [#:volumes volumes (listof (list/c path-string? string? (or/c 'ro 'rw))) '()]
+                        [#:memory-mb memory-mb (or/c #f exact-positive-integer?) #f]
+                        [#:swap-mb swap-mb (or/c #f exact-positive-integer?) #f]
                         [#:replace? replace? boolean? #f])
          string?]{
 
@@ -214,7 +216,18 @@ network.
 The @racket[volumes] argument supplies a mapping of host directories
 to container directory paths, where the path on the container maps to
 the host directory in the indicated mode: @racket['ro] for read-only
-or @racket['rw] for read--write.}
+or @racket['rw] for read--write.
+
+The @racket[memory-mb] and @racket[swap-mb] arguments determine the
+amount of memory that the container can use in megabytes (MB), where
+@racket[memory-mb] is ``real'' memory and @racket[swap-mb] is
+additional swap space. If only one of the numbers is provided, the
+default for the other is the same (i.e., by default, the total amount
+of memory available including swap space is twice the provided value).
+If neither is provided as a number, no specific limit is imposed on
+the container.
+
+@history[#:changed "1.5" @elem{Added @racket[#:memory-mb] and @racket[#:swap-mb].}]}
 
 
 @defproc[(docker-id [#:name name string?])
