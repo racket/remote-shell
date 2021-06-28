@@ -104,7 +104,7 @@ If @racket[mode] is @racket['error], then the result is
 with an connection error, an error exit code, or by timing out. If
 @racket[mode] is @racket['result], then the result is @racket[#t] for
 success or @racket[#f] for failure. If @racket[mode] is
-@racket['cons], then the result is a pair containing whether the
+@racket['output], then the result is a pair containing whether the
 command succeeded and a byte string for the command's output
 (including error output).
 
