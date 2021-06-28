@@ -93,7 +93,7 @@
      (remote-shell remote)
      (list (apply ~a args))))
 
-  (define saved (and (or failure-dest success-dest)
+  (define saved (and (or (equal? mode 'output) failure-dest success-dest)
                      (open-output-bytes)))
   (define (tee o1 o2)
     (cond
