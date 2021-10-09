@@ -12,5 +12,7 @@
 
 (define pkg-authors '(mflatt))
 
-
 (define scribblings '(("remote-shell.scrbl" (multi-page))))
+
+(define license
+  '(Apache-2.0 OR MIT))

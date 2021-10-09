@@ -8,3 +8,6 @@
 (define pkg-desc "Tools for running on remote and virtual-machine hosts")
 
 (define pkg-authors '(mflatt))
+
+(define license
+  '(Apache-2.0 OR MIT))
