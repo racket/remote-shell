@@ -33,7 +33,8 @@
   [docker-create
    ((#:name string?
      #:image-name string?)
-    (#:network (or/c #f string?)
+    (#:platform (or/c #f string?)
+     #:network (or/c #f string?)
      #:volumes (listof (list/c path-string? string? (or/c 'ro 'rw)))
      #:memory-mb (or/c #f exact-nonnegative-integer?)
      #:swap-mb (or/c #f exact-nonnegative-integer?)
@@ -145,6 +146,7 @@
 
 (define/who (docker-create #:name name
                            #:image-name image-name
+                           #:platform [platform #f]
                            #:network [network #f]
                            #:volumes [volumes '()]
                            #:memory-mb [memory-mb #f]
@@ -160,6 +162,9 @@
     (apply system*/string
            (append
             (list docker "container" "create" "-i" "-t" "--name" name)
+            (if platform
+                (list "--platform" platform)
+                null)
             (if network
                 (list "--network" network)
                 null)

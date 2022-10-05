@@ -198,6 +198,7 @@ other names).}
 
 @defproc[(docker-create [#:name name string?]
                         [#:image-name image-name string?]
+                        [#:platform platform (or/c #f string?) #f]
                         [#:network network (or/c #f string?) #f]
                         [#:volumes volumes (listof (list/c path-string? string? (or/c 'ro 'rw))) '()]
                         [#:memory-mb memory-mb (or/c #f exact-positive-integer?) #f]
@@ -209,6 +210,11 @@ Creates a Docker container as @racket[name] as an instance of
 @racket[image-name]. If @racket[replace?] is true, then any existing
 container using the name is stopped (if running) and removed, first.
 The newly created container is not running.
+
+If @racket[platform] is a string, then the created container uses that
+platform. Specifying a platform is useful when a host can run multiple
+platforms and @racket[image-name] is also available for multiple
+platforms.
 
 If @racket[network] is a string, then the created container uses that
 network.
@@ -227,7 +233,8 @@ of memory available including swap space is twice the provided value).
 If neither is provided as a number, no specific limit is imposed on
 the container.
 
-@history[#:changed "1.5" @elem{Added @racket[#:memory-mb] and @racket[#:swap-mb].}]}
+@history[#:changed "1.5" @elem{Added @racket[#:memory-mb] and @racket[#:swap-mb].}
+         #:changed "1.6" @elem{Added @racket[#:platform].}]}
 
 
 @defproc[(docker-id [#:name name string?])
