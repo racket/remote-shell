@@ -26,7 +26,7 @@
   [docker-build
    ((#:name string?
      #:content path-string?)
-    ()
+    (#:platform (or/c #f string?))
     . ->* .
     void?)]
   
@@ -139,10 +139,14 @@
     (failed who "remove failed" name)))
 
 (define/who (docker-build #:name name
-                          #:content content-dir)
-  (unless (system* docker "build" "--tag" name "--rm" content-dir)
+                          #:content content-dir
+                          #:platform [platform #f])
+  (unless (apply system*
+                 (append
+                  (list docker "build" "--tag" name "--rm")
+                  (if platform (list "--platform" platform) null)
+                  (list content-dir)))
     (failed who "build failed" name)))
-
 
 (define/who (docker-create #:name name
                            #:image-name image-name

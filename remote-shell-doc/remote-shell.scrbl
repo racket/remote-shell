@@ -175,12 +175,18 @@ command, which is located via @racket[find-executable-path].}
 @history[#:added "1.3"]
 
 @defproc[(docker-build [#:name name string?]
-                       [#:content content path-string?])
+                       [#:content content path-string?]
+                       [#:platform platform (or/c string?) #f])
          void?]{
 
 Builds a new Docker image tagged by @racket[name], using the
 @racket[content] directory to create the image. The @racket[content]
-directory should contain a file named @filepath{Dockerfile}.}
+directory should contain a file named @filepath{Dockerfile}. The optional
+platform argument can select a platform different than the host default,
+when supported by the host Docker installation, such as using
+@racket["linux/amd64"] on AArch64 Mac OS.
+
+@history[#:changed "1.7" @elem{Added the @racket[#:platform] argument.}]}
 
 @defproc[(docker-image-id [#:name name string?])
          (or/c #f string?)]{
