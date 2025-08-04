@@ -183,12 +183,12 @@
   (extract-one-id who reply))
 
 (define/who (docker-id #:name name)
-  (define reply (system*/string docker "container" "ls" "-a" "--filter" (~a "NAME=^" name "$") "--format" "{{.ID}}"))
+  (define reply (system*/string docker "container" "ls" "-a" "--filter" (~a "name=^" name "$") "--format" "{{.ID}}"))
   (unless reply (failed who "existence query failed" name))
   (extract-one-id who reply))
 
 (define/who (docker-running? #:name name)
-  (define running-reply (system*/string docker "container" "ls" "--filter" (~a "NAME=^" name "$") "--format" "{{.ID}}"))
+  (define running-reply (system*/string docker "container" "ls" "--filter" (~a "name=^" name "$") "--format" "{{.ID}}"))
   (define running-id (extract-one-id who running-reply))
   (and running-id #t))
 
