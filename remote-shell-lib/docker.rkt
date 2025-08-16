@@ -39,6 +39,7 @@
      #:memory-mb (or/c #f exact-nonnegative-integer?)
      #:swap-mb (or/c #f exact-nonnegative-integer?)
      #:envvars (hash/c string? string?)
+     #:ports (hash/c integer? integer?)
      #:replace? boolean?)
     . ->* .
     string?)]
@@ -157,6 +158,7 @@
                            #:memory-mb [memory-mb #f]
                            #:swap-mb [swap-mb #f]
                            #:envvars [envvars (hash)]
+                           #:ports [ports (hash)]
                            #:replace? [replace? #f])
   (when replace?
     (define id (docker-id #:name name))
@@ -178,6 +180,8 @@
               (~a "--volume=" (car vol) ":" (cadr vol) ":" (caddr vol)))
             (for/list ([key (in-hash-keys envvars)])
               (~a "-e " key "=" (hash-ref envvars key)))
+            (for/list ([key (in-hash-keys ports)])
+              (~a "-p" key ":" (hash-ref ports key)))
             (if (or memory-mb swap-mb)
                 (list (format "--memory=~am" (or memory-mb swap-mb))
                       (format "--memory-swap=~am" (+ (or memory-mb swap-mb) (or swap-mb memory-mb))))
