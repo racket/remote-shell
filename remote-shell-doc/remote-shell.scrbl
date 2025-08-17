@@ -72,6 +72,7 @@ command will be considered failed.
               [#:mode mode (or/c 'error 'result 'output) 'error]
               [#:failure-log failure-dest (or/c #f path-string?) #f]
               [#:success-log success-dest (or/c #f path-string?) #f]
+              [#:show-header show-header (procedure-arity-includes/c 0) void]
               [#:show-time? show-time? any/c #f])
            (or/c void? boolean? (cons/c boolean? bytes?))]{
 
@@ -111,8 +112,17 @@ command succeeded and a byte string for the command's output
 If @racket[failure-dest] is not @racket[#f], then if the command
 fails, the remote output (including error output) is recorded to the
 specified file. If @racket[success-dest] is not @racket[#f], then if
-the command fails, the remote output (including error output) is
-recorded to the specified file.}
+the command succeeds, the remote output (including error output) is
+recorded to the specified file.
+
+The @racket[show-header] function is called before the remote command
+is attempted. If @racket[show-time?] is true, then the current time is
+printed just after @racket[show-header] is called. Any output written
+to the current output or error port shows up both in the current
+output and error ports when @racket[ssh] is called and in recorded
+text that is written to @racket[failure-dest] or @racket[success-dest].
+
+@history[#:changed "1.8" @elem{Added the @racket[#:show-header] argument.}]}
 
 @defproc[(scp [remote remote?]
               [source path-string?]

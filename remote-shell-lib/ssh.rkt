@@ -24,6 +24,7 @@
                 (#:mode (or/c 'error 'result 'output)
                         #:failure-log (or/c #f path-string?)
                         #:success-log (or/c #f path-string?)
+                        #:show-header (procedure-arity-includes/c 0)
                         #:show-time? any/c)
                 #:rest (listof (or/c string? path-string?))
                 . ->* . any)]
@@ -84,6 +85,7 @@
              #:failure-log [failure-dest #f]
              #:success-log [success-dest #f]
              #:show-time? [show-time? #f]
+             #:show-header [show-header void]
              . args)
   (define cmd
     (append
@@ -140,6 +142,7 @@
                                 (eprintf "Timeout after ~a seconds\n" timeout)
                                 #f]
                                [else (raise exn)]))])
+        (show-header)
         (show-time)
         (begin0
           (cond
