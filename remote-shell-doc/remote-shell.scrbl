@@ -3,7 +3,9 @@
                      racket/contract
                      racket/string
                      remote-shell/ssh
-                     remote-shell/vbox))
+                     remote-shell/vbox
+                     racket/tcp
+                     racket/system))
 
 @title{Remote Shells and Virtual Machines}
 
@@ -217,6 +219,11 @@ other names).}
                         [#:platform platform (or/c #f string?) #f]
                         [#:network network (or/c #f string?) #f]
                         [#:volumes volumes (listof (list/c path-string? string? (or/c 'ro 'rw))) '()]
+                        [#:envvars envvars (hash/c (or/c bytes-environment-variable-name?
+                                                         string-environment-variable-name?)
+                                                   (or/c string-no-nuls?
+                                                         bytes-no-nuls?)) (hash)]
+                        [#:ports ports (hash/c listen-port-number? listen-port-number?) (hash)]
                         [#:memory-mb memory-mb (or/c #f exact-positive-integer?) #f]
                         [#:swap-mb swap-mb (or/c #f exact-positive-integer?) #f]
                         [#:replace? replace? boolean? #f])
@@ -240,6 +247,15 @@ to container directory paths, where the path on the container maps to
 the host directory in the indicated mode: @racket['ro] for read-only
 or @racket['rw] for read--write.
 
+The @racket[envvars] argument supplies a mapping of environment
+variable names to values for the container's environment.
+
+The @racket[ports] argument supplies a mapping of host port numbers to
+container port numbers, where attempts to connect to the host port
+number at the host will be forward to the container at the container's
+port number. Using @racket[0] as the host port allocates an ephemeral
+port for the host.
+
 The @racket[memory-mb] and @racket[swap-mb] arguments determine the
 amount of memory that the container can use in megabytes (MB), where
 @racket[memory-mb] is ``real'' memory and @racket[swap-mb] is
@@ -250,7 +266,8 @@ If neither is provided as a number, no specific limit is imposed on
 the container.
 
 @history[#:changed "1.5" @elem{Added @racket[#:memory-mb] and @racket[#:swap-mb].}
-         #:changed "1.6" @elem{Added @racket[#:platform].}]}
+         #:changed "1.6" @elem{Added @racket[#:platform].}
+         #:changed "1.8" @elem{Added @racket[#:envvars] and @racket[#:ports].}]}
 
 
 @defproc[(docker-id [#:name name string?])

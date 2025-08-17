@@ -4,6 +4,7 @@
          racket/string
          racket/format
          racket/port
+         racket/tcp
          racket/contract/base
          (for-syntax racket/base))
 
@@ -36,10 +37,11 @@
     (#:platform (or/c #f string?)
      #:network (or/c #f string?)
      #:volumes (listof (list/c path-string? string? (or/c 'ro 'rw)))
+     #:envvars (hash/c (or/c bytes-environment-variable-name? string-environment-variable-name?)
+                       (or/c string-no-nuls? bytes-no-nuls?))
+     #:ports (hash/c listen-port-number? listen-port-number?)
      #:memory-mb (or/c #f exact-nonnegative-integer?)
      #:swap-mb (or/c #f exact-nonnegative-integer?)
-     #:envvars (hash/c string? string?)
-     #:ports (hash/c integer? integer?)
      #:replace? boolean?)
     . ->* .
     string?)]
@@ -155,10 +157,10 @@
                            #:platform [platform #f]
                            #:network [network #f]
                            #:volumes [volumes '()]
-                           #:memory-mb [memory-mb #f]
-                           #:swap-mb [swap-mb #f]
                            #:envvars [envvars (hash)]
                            #:ports [ports (hash)]
+                           #:memory-mb [memory-mb #f]
+                           #:swap-mb [swap-mb #f]
                            #:replace? [replace? #f])
   (when replace?
     (define id (docker-id #:name name))
@@ -166,6 +168,10 @@
       (when (docker-running? #:name name)
         (docker-stop #:name name))
       (docker-remove #:name name)))
+  (define (to-bytes str)
+    (if (string? str)
+        (string->bytes/locale str)
+        str))
   (define reply
     (apply system*/string
            (append
@@ -178,10 +184,15 @@
                 null)
             (for/list ([vol (in-list volumes)])
               (~a "--volume=" (car vol) ":" (cadr vol) ":" (caddr vol)))
-            (for/list ([key (in-hash-keys envvars)])
-              (~a "-e " key "=" (hash-ref envvars key)))
-            (for/list ([key (in-hash-keys ports)])
-              (~a "-p" key ":" (hash-ref ports key)))
+            (apply
+             append
+             (for/list ([key (in-hash-keys envvars)])
+               (list "-e"
+                     (bytes-append (to-bytes key) #"=" (to-bytes (hash-ref envvars key))))))
+            (apply
+             append
+             (for/list ([key (in-hash-keys ports)])
+               (list "-p" (~a key ":" (hash-ref ports key)))))
             (if (or memory-mb swap-mb)
                 (list (format "--memory=~am" (or memory-mb swap-mb))
                       (format "--memory-swap=~am" (+ (or memory-mb swap-mb) (or swap-mb memory-mb))))
