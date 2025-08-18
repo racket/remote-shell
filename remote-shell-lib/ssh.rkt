@@ -126,8 +126,9 @@
 
   (define (show-time)
     (when show-time?
-      (printf "The time is now ~a\n" 
-              (date->string (seconds->date (current-seconds)) #t))))
+      (printf "The time is now ~a\n"
+              (parameterize ([date-display-format 'rfc2822])
+                (date->string (seconds->date (current-seconds)) #t)))))
 
   (define ok?
     (parameterize ([current-output-port stdout]
