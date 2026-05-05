@@ -27,7 +27,14 @@
   [docker-build
    ((#:name string?
      #:content path-string?)
-    (#:platform (or/c #f string?))
+    (#:platform (or/c #f string?)
+     #:dockerfile (or/c #f path-string?)
+     #:build-args (hash/c (or/c bytes-environment-variable-name?
+                                string-environment-variable-name?)
+                          (or/c string-no-nuls? bytes-no-nuls?))
+     #:buildx? (or/c #f 'load 'push)
+     #:cache-from (listof string?)
+     #:cache-to (listof string?))
     . ->* .
     void?)]
   
@@ -79,7 +86,9 @@
   [docker-exec
    ((#:name string?
      string?)
-    (#:mode (or/c 'error 'result))
+    (#:mode (or/c 'error 'result)
+     #:user (or/c #f string?)
+     #:workdir (or/c #f path-string?))
     #:rest (listof string?)
     . ->* .
     (or/c boolean? void?))]
@@ -142,14 +151,60 @@
   (unless (system* docker "image" "rm" name)
     (failed who "remove failed" name)))
 
+(define (docker-build-argv #:name name
+                           #:content content-dir
+                           #:platform platform
+                           #:dockerfile dockerfile
+                           #:build-args build-args
+                           #:buildx? buildx?
+                           #:cache-from cache-from
+                           #:cache-to cache-to)
+  (define (to-bytes str)
+    (if (string? str) (string->bytes/locale str) str))
+  (when (and (not buildx?)
+             (or (pair? cache-from) (pair? cache-to)))
+    (error 'docker-build
+           (string-append "cache-from/cache-to require buildx?"
+                          "\n  given cache-from: ~e"
+                          "\n  given cache-to: ~e")
+           cache-from cache-to))
+  (append
+   (cond
+     [(eq? buildx? 'push) (list "buildx" "build" "--push")]
+     [(eq? buildx? 'load) (list "buildx" "build" "--load")]
+     [else (list "build")])
+   (list "--tag" name "--rm")
+   (if dockerfile (list "--file" dockerfile) null)
+   (if platform (list "--platform" platform) null)
+   (apply append
+          (for/list ([key (in-hash-keys build-args)])
+            (list "--build-arg"
+                  (bytes-append (to-bytes key)
+                                #"="
+                                (to-bytes (hash-ref build-args key))))))
+   (for/list ([c (in-list cache-from)])
+     (string-append "--cache-from=" c))
+   (for/list ([c (in-list cache-to)])
+     (string-append "--cache-to=" c))
+   (list content-dir)))
+
 (define/who (docker-build #:name name
                           #:content content-dir
-                          #:platform [platform #f])
-  (unless (apply system*
-                 (append
-                  (list docker "build" "--tag" name "--rm")
-                  (if platform (list "--platform" platform) null)
-                  (list content-dir)))
+                          #:platform [platform #f]
+                          #:dockerfile [dockerfile #f]
+                          #:build-args [build-args (hash)]
+                          #:buildx? [buildx? #f]
+                          #:cache-from [cache-from null]
+                          #:cache-to [cache-to null])
+  (unless (apply system* docker
+                 (docker-build-argv #:name name
+                                    #:content content-dir
+                                    #:platform platform
+                                    #:dockerfile dockerfile
+                                    #:build-args build-args
+                                    #:buildx? buildx?
+                                    #:cache-from cache-from
+                                    #:cache-to cache-to))
     (failed who "build failed" name)))
 
 (define/who (docker-create #:name name
@@ -229,10 +284,29 @@
         (sleep delay)
         (loop (min (* delay 2) 1))))))
 
+(define (docker-exec-argv #:name name
+                          #:user user
+                          #:workdir workdir
+                          #:command command
+                          #:args args)
+  (append
+   (list "container" "exec")
+   (if user (list "--user" user) null)
+   (if workdir (list "--workdir" workdir) null)
+   (list name command)
+   args))
+
 (define/who (docker-exec #:name name
                          #:mode [mode 'error]
+                         #:user [user #f]
+                         #:workdir [workdir #f]
                          command . args)
-  (define ok? (apply system* docker "container" "exec" name command args))
+  (define ok?
+    (apply system* docker (docker-exec-argv #:name name
+                                            #:user user
+                                            #:workdir workdir
+                                            #:command command
+                                            #:args args)))
   (case mode
     [(result) ok?]
     [else

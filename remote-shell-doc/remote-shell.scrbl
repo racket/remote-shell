@@ -189,17 +189,48 @@ command, which is located via @racket[find-executable-path].}
 
 @defproc[(docker-build [#:name name string?]
                        [#:content content path-string?]
-                       [#:platform platform (or/c string?) #f])
+                       [#:platform platform (or/c #f string?) #f]
+                       [#:dockerfile dockerfile (or/c #f path-string?) #f]
+                       [#:build-args build-args (hash/c (or/c bytes-environment-variable-name?
+                                                              string-environment-variable-name?)
+                                                        (or/c string-no-nuls?
+                                                              bytes-no-nuls?)) (hash)]
+                       [#:buildx? buildx? (or/c #f 'load 'push) #f]
+                       [#:cache-from cache-from (listof string?) '()]
+                       [#:cache-to cache-to (listof string?) '()])
          void?]{
 
 Builds a new Docker image tagged by @racket[name], using the
 @racket[content] directory to create the image. The @racket[content]
-directory should contain a file named @filepath{Dockerfile}. The optional
+directory should contain a file named @filepath{Dockerfile} unless
+@racket[dockerfile] is supplied to override that path. The optional
 platform argument can select a platform different than the host default,
 when supported by the host Docker installation, such as using
 @racket["linux/amd64"] on AArch64 Mac OS.
 
-@history[#:changed "1.7" @elem{Added the @racket[#:platform] argument.}]}
+If @racket[dockerfile] is a path, it is passed as the @exec{--file}
+argument to @exec{docker build}, allowing the Dockerfile to live
+outside @racket[content].
+
+The @racket[build-args] argument supplies a mapping of
+@exec{--build-arg} key/value pairs to make available as
+@exec{ARG} substitutions inside the Dockerfile.
+
+If @racket[buildx?] is @racket['load], the build runs as
+@exec{docker buildx build --load} so that the resulting image is
+loaded into the local Docker daemon. If @racket[buildx?] is
+@racket['push], the build runs as @exec{docker buildx build --push}
+so that the resulting image is pushed to a registry.  Use
+@racket[cache-from] and @racket[cache-to] (each a list of strings
+passed verbatim to @exec{--cache-from} and @exec{--cache-to}) to
+participate in a build cache. Both lists require @racket[buildx?] to
+be set.
+
+@history[#:changed "1.7" @elem{Added the @racket[#:platform] argument.}
+         #:changed "1.10" @elem{Added the @racket[#:dockerfile],
+                                @racket[#:build-args], @racket[#:buildx?],
+                                @racket[#:cache-from], and
+                                @racket[#:cache-to] arguments.}]}
 
 @defproc[(docker-image-id [#:name name string?])
          (or/c #f string?)]{
@@ -311,7 +342,9 @@ may stay in the running state for some time after requesting a stop.
 @defproc[(docker-exec [#:name name string?]
                       [command path-string?]
                       [arg path-string?] ...
-                      [#:mode mode (or/c 'error 'result) 'error])
+                      [#:mode mode (or/c 'error 'result) 'error]
+                      [#:user user (or/c #f string?) #f]
+                      [#:workdir workdir (or/c #f path-string?) #f])
          (or/c boolean? void?)]{
 
 Executes @racket[command] with @racket[arg]s on the Docker container
@@ -323,7 +356,17 @@ container or due to a problem accessing the container---as well as the
 return value for success. The @racket['error] mode raises an exception
 for failure and returns @racket[(void)] for success, while
 @racket['result] mode returns a boolean indicating whether the command
-was successful.}
+was successful.
+
+If @racket[user] is a string, it is passed as the @exec{--user}
+argument to @exec{docker container exec}, so the command runs as the
+given user (or @tt{uid}, or @tt{uid:gid}) instead of the container's
+default user. If @racket[workdir] is a path, it is passed as
+@exec{--workdir}, so the command runs with the given working
+directory inside the container instead of the image's default.
+
+@history[#:changed "1.10" @elem{Added the @racket[#:user] and
+                                @racket[#:workdir] arguments.}]}
 
 @defproc[(docker-copy [#:name name string?]
                       [#:src src path-string?]
