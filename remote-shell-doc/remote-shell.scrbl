@@ -31,6 +31,7 @@ produced by @racket[remote], @racket[#f] otherwise.}
 @defproc[(remote [#:host host string?]
                  [#:kind kind (or/c 'ip 'docker) 'ip]
                  [#:user user string? ""]
+                 [#:port port (or/c (integer-in 1 65535) #f) #f]
                  [#:shell shell (listof string?) '("/bin/sh" "-c")]
                  [#:env env (listof (cons/c string? string?)) '()]
                  [#:remote-tunnels remote-tunnels (listof (cons/c (integer-in 1 65535)
@@ -43,7 +44,7 @@ produced by @racket[remote], @racket[#f] otherwise.}
 Creates a representation of a remote host. The @racket[host] argument
 specifies the host for an @exec{ssh} connection or a Docker container
 name, depending on whether @racket[kind] is @racket['ip] or
-@racket['docker]. The @racket[user] argument is only used for
+@racket['docker]. The @racket[user] and @racket[user] arguments are only used for
 @racket['ip] hosts; if @racket[user] is empty, then the current user
 name is used for the remote host.
 
@@ -67,7 +68,8 @@ The @racket[timeout] argument specifies a timeout after which a remote
 command will be considered failed.
 
 @history[#:changed "1.3" @elem{Added support for Docker containers, the @racket[kind]
-                               argument, and the @racket[shell] argument.}]}
+                               argument, and the @racket[shell] argument.}
+         #:changed "1.11" @elem{Added the @racket[port] argument.}]}
 
 
 @defproc[(ssh [remote remote?]
