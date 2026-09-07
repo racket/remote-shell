@@ -14,6 +14,7 @@
                    (#:kind (or/c 'ip 'docker)
                     #:shell (listof string?)
                     #:user string?
+                    #:port (or/c (integer-in 1 65535) #f)
                     #:key (or/c #f path-string?)
                     #:env (listof (cons/c string? string?))
                     #:timeout real?
@@ -40,7 +41,7 @@
 
           [remote-host (remote? . -> . string?)]))
 
-(struct remote (host kind user shell timeout remote-tunnels env key)
+(struct remote (host kind user port shell timeout remote-tunnels env key)
   #:constructor-name make-remote)
 
 (define create-remote
@@ -48,6 +49,7 @@
     (define (remote #:host host
                     #:kind [kind 'ip]
                     #:user [user ""]
+                    #:port [port #f]
                     #:shell [shell '("/bin/sh" "-c" )]
                     #:key [key #f]
                     #:timeout [timeout 600]
@@ -56,7 +58,7 @@
       (when (and (eq? kind 'docker)
                  (pair? remote-tunnels))
         (raise-arguments-error 'remote "tunnels are not supported for a 'docker remote"))
-      (make-remote host kind user shell timeout remote-tunnels env key))
+      (make-remote host kind user port shell timeout remote-tunnels env key))
     remote))
 
 (define scp-exe (find-executable-path "scp"))
@@ -163,6 +165,9 @@
                       append
                       (for/list ([tunnel (in-list (remote-remote-tunnels remote))])
                         (list "-R" (~a (car tunnel) ":localhost:" (cdr tunnel)))))
+                     (if (remote-port remote)
+                         (list "-p" (~a (remote-port remote)))
+                         null)
                      (list (remote-user+host remote))
                      (if key (list "-i" key) null)
                      ;; ssh needs an extra level of quoting
@@ -199,7 +204,11 @@
                     #:dest dest
                     #:mode 'result)]
       [(ip)
-       (apply system*/show scp-exe (append (if key (list "-i" key) null) (list src dest)))]))
+       (apply system*/show scp-exe (append (if key (list "-i" key) null)
+                                           (if (remote-port remote)
+                                               (list "-P" (~a (remote-port remote)))
+                                               null)
+                                           (list src dest)))]))
   (case mode
     [(result) ok?]
     [else 
